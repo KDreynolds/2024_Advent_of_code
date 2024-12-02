@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -33,18 +32,20 @@ func main() {
 		rightList = append(rightList, right)
 	}
 
-	// Sort both lists
-	sort.Ints(leftList)
-	sort.Ints(rightList)
-
-	// Calculate total distance
-	totalDistance := 0
-	for i := 0; i < len(leftList); i++ {
-		distance := abs(leftList[i] - rightList[i])
-		totalDistance += distance
+	// Create a map to count occurrences in rightList
+	rightCounts := make(map[int]int)
+	for _, num := range rightList {
+		rightCounts[num]++
 	}
 
-	fmt.Println(totalDistance)
+	// Calculate similarity score
+	similarityScore := 0
+	for _, leftNum := range leftList {
+		count := rightCounts[leftNum]
+		similarityScore += leftNum * count
+	}
+
+	fmt.Println(similarityScore)
 }
 
 func abs(x int) int {
