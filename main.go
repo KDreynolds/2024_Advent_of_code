@@ -4,84 +4,78 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
-	"strings"
 )
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-	safeCount := 0
-
+	sum := 0
+	enabled := true // Start with multiplications enabled
+	
+	// Regex patterns
+	mulRe := regexp.MustCompile(`mul\((\d{1,3}),(\d{1,3})\)`)
+	doRe := regexp.MustCompile(`do\(\)`)
+	dontRe := regexp.MustCompile(`don't\(\)`)
+	
 	for scanner.Scan() {
 		line := scanner.Text()
-		if line == "" {
-			continue
-		}
+		pos := 0
 		
-		// Parse numbers from line
-		var numbers []int
-		for _, numStr := range strings.Fields(line) {
-			num, _ := strconv.Atoi(numStr)
-			numbers = append(numbers, num)
-		}
-		
-		if isSequenceSafeWithDampener(numbers) {
-			safeCount++
-		}
-	}
-
-	fmt.Println(safeCount)
-}
-
-func isSequenceSafeWithDampener(nums []int) bool {
-	// First check if sequence is safe without removing any number
-	if isSequenceSafe(nums) {
-		return true
-	}
-	
-	// Try removing each number one at a time
-	for i := 0; i < len(nums); i++ {
-		// Create new slice without number at index i
-		dampened := make([]int, 0, len(nums)-1)
-		dampened = append(dampened, nums[:i]...)
-		dampened = append(dampened, nums[i+1:]...)
-		
-		if isSequenceSafe(dampened) {
-			return true
-		}
-	}
-	
-	return false
-}
-
-func isSequenceSafe(nums []int) bool {
-	if len(nums) < 2 {
-		return true
-	}
-
-	// Check first difference to determine if sequence should increase or decrease
-	increasing := nums[1] > nums[0]
-	
-	for i := 1; i < len(nums); i++ {
-		diff := nums[i] - nums[i-1]
-		
-		// Check if difference is between 1 and 3
-		if abs(diff) < 1 || abs(diff) > 3 {
-			return false
-		}
-		
-		// Check if sequence maintains direction (increasing or decreasing)
-		if increasing && diff < 0 || !increasing && diff > 0 {
-			return false
+		for pos < len(line) {
+			// Find next occurrence of each pattern
+			mulMatch := mulRe.FindStringSubmatch(line[pos:])
+			mulIndex := mulRe.FindStringIndex(line[pos:])
+			doMatch := doRe.FindStringIndex(line[pos:])
+			dontMatch := dontRe.FindStringIndex(line[pos:])
+			
+			// Adjust matches to account for current position
+			if mulIndex != nil {
+				mulIndex[0] += pos
+				mulIndex[1] += pos
+			}
+			if doMatch != nil {
+				doMatch[0] += pos
+				doMatch[1] += pos
+			}
+			if dontMatch != nil {
+				dontMatch[0] += pos
+				dontMatch[1] += pos
+			}
+			
+			// Find the earliest match
+			nextPos := len(line)
+			if mulIndex != nil {
+				nextPos = mulIndex[0]
+			}
+			if doMatch != nil && doMatch[0] < nextPos {
+				nextPos = doMatch[0]
+			}
+			if dontMatch != nil && dontMatch[0] < nextPos {
+				nextPos = dontMatch[0]
+			}
+			
+			// Process the earliest match
+			if nextPos == len(line) {
+				break
+			}
+			
+			if doMatch != nil && doMatch[0] == nextPos {
+				enabled = true
+				pos = doMatch[1]
+			} else if dontMatch != nil && dontMatch[0] == nextPos {
+				enabled = false
+				pos = dontMatch[1]
+			} else if mulIndex != nil && mulIndex[0] == nextPos && mulMatch != nil {
+				if enabled {
+					x, _ := strconv.Atoi(mulMatch[1])
+					y, _ := strconv.Atoi(mulMatch[2])
+					sum += x * y
+				}
+				pos = mulIndex[1]
+			}
 		}
 	}
 	
-	return true
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
+	fmt.Println(sum)
 }
